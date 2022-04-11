@@ -23,6 +23,7 @@ def clean_text(text):
     for x in "0123456789":
         text = text.replace(x, "")
     text = text.lower()
+    text = text.replace("\n", "")
     return text
 
 
@@ -36,6 +37,10 @@ def extract_all_words_from_a_file(file_name):
             for word in paragraph.text.split(" "):
                 if word not in stop_words:
                     words.append(porter_stemmer.stem(word))
+    title = clean_text(extract_title_for_file(file_name))
+    for word in title.split(" "):
+        if word not in stop_words:
+            words.append(porter_stemmer.stem(word))
     words = [x for x in words if x != '']
     words = list(dict.fromkeys(words))
     return words
@@ -54,17 +59,36 @@ def extract_all_words_from_folder(folder_name):
     output_file_words.close()
 
 
-def determine_topics_for_file(file_name):
-    topics = []
+def extract_title_for_file(file_name):
+    my_tree = ET.parse(file_name)
+    my_root = my_tree.getroot()
+    text = "\n" + my_root.findall("title")[0].text
+    return text
+
+
+def extract_code_for_a_class(file_name, class_attrib):
+    elements = []
     my_tree = ET.parse(file_name)
     my_root = my_tree.getroot()
     for metadata in my_root.findall("metadata"):
         for codes in metadata.findall("codes"):
-            if codes.attrib.popitem()[1] == "bip:topics:1.0":
+            if codes.attrib.popitem()[1] == class_attrib:
                 for code in codes.iter("code"):
                     for topic in code.attrib.values():
-                        topics.append(topic)
-    return topics
+                        elements.append(topic)
+    return elements
+
+
+def determine_topics_for_file(file_name):
+    return extract_code_for_a_class(file_name, "bip:topics:1.0")
+
+
+def determine_countries_for_file(file_name):
+    return extract_code_for_a_class(file_name, "bip:countries:1.0")
+
+
+def determine_industries_for_file(file_name):
+    return extract_code_for_a_class(file_name, "bip:industries:1.0")
 
 
 def determine_frequency_vector_for_file(file_name, frequency_dict):
@@ -77,6 +101,10 @@ def determine_frequency_vector_for_file(file_name, frequency_dict):
             for word in paragraph.text.split(" "):
                 if word not in stop_words and porter_stemmer.stem(word) in words.keys():
                     words[porter_stemmer.stem(word)] += 1
+    title = clean_text(extract_title_for_file(file_name))
+    for word in title.split(" "):
+        if word not in stop_words and porter_stemmer.stem(word) in words.keys():
+            words[porter_stemmer.stem(word)] += 1
     return words
 
 
@@ -133,3 +161,7 @@ if __name__ == "__main__":
     determine_frequency_vectors_of_each_file_in_directory(directory_name, freq_vector)
     # print words for file
     # print_all_words_for_file("Reuters_34/2504NEWS.XML")
+    # extract countries from a file
+    # print(determine_countries_for_file("Reuters_34\\2504NEWS.XML"))
+    # extract title from file
+    # extract_title_for_file("Reuters_34\\2504NEWS.XML")
