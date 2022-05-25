@@ -1,16 +1,15 @@
-import glob
 import string
 import xml.etree.ElementTree as ET
 from nltk.corpus import stopwords
 from nltk import stem
 import glob
 
-porter_stemmer = stem.PorterStemmer()
+porter_stemmer = stem.SnowballStemmer('english')
 stop_words = set(stopwords.words('english'))
 abbreviation_file = open("abrevieri", "r")
 abbreviation = {}
 for line in abbreviation_file:
-    line = line.replace("\n", "").split(" ")
+    line = line.replace("\n", "").split("|")
     abbreviation[line[0]] = line[1]
 
 
@@ -18,7 +17,7 @@ def clean_text(text):
     for key, value in abbreviation.items():
         text = text.replace(key, value)
     for sign in string.punctuation:
-        text = text.replace(sign, "")
+        text = text.replace(sign, " ")
     text = text.replace("\t", "")
     for x in "0123456789":
         text = text.replace(x, "")
@@ -147,17 +146,40 @@ def print_all_words_for_file(file_name):
     print(words)
 
 
-if __name__ == "__main__":
-    directory_name = "Reuters_34/*"
-    # extracts all the words form the text tag from all files in folder
-    extract_all_words_from_folder(directory_name)
+def prepare_interrogation(file_name, frequency_dict):
+    file = open(file_name, "r")
+    text = file.read()
+    text = clean_text(text)
+    interrogation_words = {}
+    for word in text.split(" "):
+        if word not in stop_words:
+            word = porter_stemmer.stem(word)
+            if word in frequency_dict.keys():
+                word_index = (list(frequency_dict.keys()).index(word))
+                if word_index not in interrogation_words.keys():
+                    interrogation_words[word_index] = 1
+                else:
+                    interrogation_words[word_index] += 1
+    return dict(sorted(interrogation_words.items()))
 
-    # creates the frequency vectors for all the files in the given directory
-    words_file = open("all_words.txt", "r")
+
+def prepare_frequency_vector_from_word_file(file_name):
+    words_file = open(file_name, "r")
     words_list = words_file.read().split(" ")
     freq_vector = {}
     for item in words_list:
         freq_vector[item] = 0
+    return freq_vector
+
+
+if __name__ == "__main__":
+    directory_name = "Reuters_7083/*"
+    # extracts all the words form the text tag from all files in folder
+    extract_all_words_from_folder(directory_name)
+
+    # creates the frequency vectors for all the files in the given directory
+    freq_vector = {}
+    freq_vector = prepare_frequency_vector_from_word_file("all_words.txt")
     determine_frequency_vectors_of_each_file_in_directory(directory_name, freq_vector)
     # print words for file
     # print_all_words_for_file("Reuters_34/2504NEWS.XML")
